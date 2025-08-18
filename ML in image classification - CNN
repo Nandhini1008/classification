@@ -1,0 +1,173 @@
+🔢 Data & Tensors
+
+Tensor: fancy word for an n-dim array (like NumPy arrays but GPU-friendly). Images are typically shaped [C, H, W] = channels, height, width. 🧮🧠
+
+pixel_values: the actual image tensor you feed the model. In your pipeline it’s already preprocessed to the right shape. 🖼️➡️📦
+
+labels: integers representing classes (e.g., 0=AI, 1=Deepfake, 2=Real). That’s what the model tries to predict. 🏷️
+
+📦 Datasets, Loaders & Batching
+
+Dataset (custom class): how you tell PyTorch how to get one item (image + label). __getitem__ returns a dict with pixel_values and labels. 📚
+
+DataLoader: wraps a dataset to give you batches. Handles shuffling, multiprocessing, etc. Batch = multiple samples at once. 🧺
+
+collate_fn: how to stack individual items into a batch. Yours does torch.stack for both images and labels. 🔗
+
+Batch size: how many samples per forward/backward pass. More batch size = more VRAM. 🧊
+
+🧠 Model Architectures
+
+CNN (Convolutional Neural Network): learns spatial patterns with conv filters; perfect for images. 📡
+
+ResNet50: a pretrained CNN with 50 layers & skip connections (residuals) so training deep nets doesn’t explode. You fine-tune it for your 3 classes. 🏗️
+
+Pretrained: weights learned on a massive dataset (ImageNet). You start with those instead of random → faster/better learning. 🏋️‍♀️⚡
+
+Transfer Learning: reusing a pretrained backbone and only swapping the last layer(s) for your task. That’s exactly what you’re doing. 🔁
+
+🧱 Common Layers (what they do)
+
+nn.Conv2d: slides learnable filters over the image → extracts edges, textures, patterns. 🧩
+
+nn.BatchNorm2d: normalizes activations per channel → stabilizes training & lets you use bigger learning rates. 🧼
+
+nn.ReLU: activation function: max(0, x). Adds non-linearity so the model can learn complex stuff. ⚡
+
+nn.MaxPool2d: downsampling by taking local maximums → smaller spatial size, keeps strong features. 🕳️
+
+nn.AdaptiveAvgPool2d((1,1)): global average pooling → compresses each channel to a single value regardless of input size. 🧯
+
+nn.Linear: fully connected layer → mixes features to produce class logits. 🧮
+
+nn.Dropout: randomly zeroes some activations during training → regularization to reduce overfitting. 🎲
+
+🧭 Forward/Backward Pass
+
+Forward pass: data → model → outputs (logits). 🔜
+
+Backward pass: compute gradients of loss wrt parameters via backprop; optimizer uses them to update weights. 🔁
+
+model.train() vs model.eval():
+
+train() enables dropout & batchnorm updates.
+
+eval() disables dropout & uses running stats for batchnorm. 🎛️
+
+with torch.no_grad(): turns off gradient tracking (faster, less memory) during eval/inference. 🚫✍️
+
+🎯 Outputs, Losses & Probabilities
+
+Logits: raw outputs from the last linear layer (not probabilities). 📈
+
+torch.softmax: converts logits → probabilities that sum to 1 across classes. 🧮➡️🎲
+
+Predicted class: torch.max(logits, dim=1) gives the index of the largest logit → your predicted label. 🏆
+
+nn.CrossEntropyLoss: the go-to classification loss for multi-class problems. Combines LogSoftmax + NLLLoss under the hood. 🧨
+
+🔧 Optimizer & LR Scheduler
+
+optim.Adam: adaptive optimizer that tweaks learning rates per parameter using running stats of gradients. Usually converges faster than plain SGD. 🛠️
+
+Learning Rate (LR): how big each update step is. Too big = chaos, too small = snail. 🐌
+
+StepLR(step_size=5, gamma=0.5): every 5 epochs, multiply LR by 0.5. Helps training settle into minima. 📉
+
+optimizer.zero_grad(): clears old gradients before computing new ones. You don’t want gradients snowballing. 🧹
+
+loss.backward(): compute gradients.
+
+optimizer.step(): apply gradients (update weights). 🧑‍🔬
+
+🗓️ Training Loop Lingo
+
+Epoch: one full pass over the training set. 🔄
+
+Iteration/step: one batch update inside an epoch. 👣
+
+Training vs Validation vs Test:
+
+Training: used to update weights.
+
+Validation: used to tune decisions (like early stopping, LR schedules, model selection).
+
+Test: final unbiased evaluation. 🧪
+
+random_split: splits your dataset into train/val/test subsets by size. ✂️
+
+🧪 Metrics (how we judge the model)
+
+Accuracy: % of correct predictions. Simple but can be misleading with class imbalance. ✅/❌
+
+Classification Report: per-class precision, recall, F1-score, and support:
+
+Precision: out of predicted class X, how many were actually X (low FP). 🎯
+
+Recall: out of actual class X, how many did we catch (low FN). 🧲
+
+F1: harmonic mean of precision & recall (balance). ⚖️
+
+Support: number of true instances for each class. 🔢
+
+Confusion Matrix: table showing how often each true class was predicted as each class. Great for spotting which classes your model confuses. 🧩
+
+🧯 Overfitting & Regularization
+
+Overfitting: model memorizes training set and flops on val/test. Signs: train acc ↑ while val acc ↓. 📉
+
+Regularization tricks you’re using:
+
+Dropout (randomly zero activations)
+
+Pretrained backbones (better generalization)
+
+Validation monitoring (pick best val acc) 🧰
+
+(Optional extras you could add): weight decay (L2), data augmentation, early stopping. 🧪
+
+💾 Saving / Loading Models
+
+state_dict(): dictionary of model weights.
+
+.pth file: PyTorch weight checkpoint.
+
+You save the best model by validation accuracy, then reload it at the end. 🏅
+
+🧩 Misc but Important
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu': trains on GPU if you have one (way faster). ⚡
+
+Parameter count: sum(p.numel() for p in model.parameters()) → how thicc your model is. 🍰
+
+Class names: you map indices to names ['AI-generated','Deepfake','Real'] for readable logs. 🏷️
+
+scheduler.get_last_lr(): peeks the current LR after scheduling. 👀
+
+torch.max(outputs.data, 1): gets predicted class, but fyi using .data is kinda old-school; prefer torch.argmax(outputs, dim=1) these days. 🧓➡️🆕
+
+🧠 What your two models imply
+
+DeepfakeClassifier (ResNet50): transfer learning with a pretrained beast → great when your dataset isn’t massive. 🐉
+
+SimpleClassifier: lightweight CNN from scratch → faster to train, good baseline, might underperform on complex data. 🪶
+
+🧪 Inference (predicting on one sample)
+
+model.eval() + no_grad(): inference mode for speed & stability. 🏁
+
+softmax then argmax: get probs & top class.
+
+You print predicted class + confidence (probability of that class). 🔮
+
+🧠 Pro Tips (optional upgrades)
+
+Freeze early layers of ResNet at first, train only the head; then unfreeze more layers to fine-tune = often better & stabler. 🥶➡️🔥
+
+Data augmentation (random crops, flips, color jitter) boosts robustness, especially for deepfake artifacts. 🎛️
+
+Class imbalance? Use weighted loss or samplers if one class (e.g., “Real”) dominates. ⚖️
+
+Early stopping: stop when val loss stops improving. Saves time & prevents overfit. ⏹️
+
+Use torch.argmax(outputs, dim=1) instead of .data style. Cleaner & safer. 🧼
